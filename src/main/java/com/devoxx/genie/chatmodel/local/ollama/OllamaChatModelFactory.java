@@ -91,7 +91,15 @@ public class OllamaChatModelFactory extends LocalChatModelFactory {
     @Override
     protected LanguageModel buildLanguageModel(Object model) throws IOException {
         OllamaModelEntryDTO ollamaModel = (OllamaModelEntryDTO) model;
-        int contextWindow = OllamaApiService.getModelContext(ollamaModel.getName());
+        // The /api/show context probe is best-effort: when it fails (model not loaded,
+        // slow endpoint, non-2xx) the model must still be listed, with the default
+        // context window, instead of being dropped from the model list.
+        int contextWindow;
+        try {
+            contextWindow = OllamaApiService.getModelContext(ollamaModel.getName());
+        } catch (IOException e) {
+            contextWindow = OllamaApiService.DEFAULT_CONTEXT_LENGTH;
+        }
         return LanguageModel.builder()
                 .provider(modelProvider)
                 .modelName(ollamaModel.getName())
