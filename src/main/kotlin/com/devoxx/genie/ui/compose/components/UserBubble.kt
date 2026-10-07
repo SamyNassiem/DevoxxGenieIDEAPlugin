@@ -19,7 +19,6 @@ import androidx.compose.ui.unit.sp
 import com.devoxx.genie.ui.compose.theme.DevoxxGenieThemeAccessor
 import com.devoxx.genie.ui.compose.theme.DevoxxOrange
 import com.mikepenz.markdown.compose.Markdown
-import com.mikepenz.markdown.compose.components.markdownComponents
 import com.mikepenz.markdown.model.DefaultMarkdownColors
 import com.mikepenz.markdown.model.DefaultMarkdownTypography
 import dev.snipme.highlights.model.SyntaxThemes
@@ -102,7 +101,8 @@ fun UserBubble(
                 content = promptText,
                 colors = mdColors,
                 typography = mdTypography,
-                components = markdownComponents(
+                components = devoxxMarkdownComponents(
+                    isDark = colors.isDark,
                     codeBlock = codeBlock,
                     codeFence = codeFence,
                 ),

@@ -3,7 +3,9 @@ package com.devoxx.genie.ui.compose.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -29,7 +31,9 @@ import com.devoxx.genie.ui.compose.model.TerminalState
 import com.devoxx.genie.ui.compose.theme.*
 import com.mikepenz.markdown.compose.Markdown
 import com.mikepenz.markdown.compose.components.MarkdownComponent
+import com.mikepenz.markdown.compose.components.MarkdownComponents
 import com.mikepenz.markdown.compose.components.markdownComponents
+import com.mikepenz.markdown.compose.elements.MarkdownTable
 import com.mikepenz.markdown.model.DefaultMarkdownColors
 import com.mikepenz.markdown.model.DefaultMarkdownTypography
 import dev.snipme.highlights.model.SyntaxTheme
@@ -171,6 +175,44 @@ private fun codeBlockWithCopy(isDark: Boolean): MarkdownComponent = { model ->
     }
 }
 
+/**
+ * Table component slot that keeps the library's default table rendering
+ * ([MarkdownTable], unchanged) but puts it inside a horizontally scrollable
+ * container. A table wider than the chat bubble then scrolls inside the bubble
+ * instead of overflowing the chat panel. Inside the scroll container the table
+ * is measured with unbounded width, which pins it to its own fixed width
+ * (columns x [com.mikepenz.markdown.model.MarkdownDimens.tableCellWidth]).
+ */
+internal val scrollableTable: MarkdownComponent = { model ->
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+    ) {
+        MarkdownTable(
+            content = model.content,
+            node = model.node,
+            style = model.typography.table,
+        )
+    }
+}
+
+/**
+ * The component set used by [MarkdownContent] and by [UserBubble]. Extracted (instead
+ * of inlined in the composables) so the wiring — in particular the [scrollableTable]
+ * override — can be unit-tested without a Compose UI runner. Callers that render code
+ * blocks differently (e.g. without the copy button) pass their own code components.
+ */
+internal fun devoxxMarkdownComponents(
+    isDark: Boolean,
+    codeBlock: MarkdownComponent = codeBlockWithCopy(isDark),
+    codeFence: MarkdownComponent = codeFenceWithCopy(isDark),
+): MarkdownComponents = markdownComponents(
+    codeBlock = codeBlock,
+    codeFence = codeFence,
+    table = scrollableTable,
+)
+
 @Composable
 private fun MarkdownContent(
     content: String,
@@ -220,10 +262,7 @@ private fun MarkdownContent(
             content = content,
             colors = mdColors,
             typography = mdTypography,
-            components = markdownComponents(
-                codeBlock = codeBlockWithCopy(colors.isDark),
-                codeFence = codeFenceWithCopy(colors.isDark),
-            ),
+            components = devoxxMarkdownComponents(colors.isDark),
             // Keep the previously rendered content visible while the updated markdown is
             // re-parsed. Without this every streaming update swaps the bubble to a blank
             // loading state first — full-text flicker.
