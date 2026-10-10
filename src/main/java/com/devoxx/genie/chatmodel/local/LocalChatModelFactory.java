@@ -132,11 +132,6 @@ public abstract class LocalChatModelFactory implements ChatModelFactory {
         List<CompletableFuture<Void>> futures = new ArrayList<>();
         try {
             Object[] models = fetchModels();
-            // The listing call reaching the provider successfully is the authoritative
-            // "provider is running" signal. Per-model detail lookups (e.g. Ollama's
-            // /api/show context probe) are best-effort: a failure there must not make
-            // the provider appear down or hide the model list.
-            providerRunning = true;
             if (models != null) {
                 for (Object model : models) {
                     CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
@@ -160,6 +155,11 @@ public abstract class LocalChatModelFactory implements ChatModelFactory {
             }
             CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
             cachedModels = modelNames;
+            // Set only after cachedModels is assigned: getModels() may run on another
+            // thread and must never observe providerRunning == true while cachedModels
+            // is still null. Per-model build failures are handled inside the futures
+            // above, so reaching this line means the listing call succeeded.
+            providerRunning = true;
         } catch (IOException e) {
             handleGeneralFetchError(e);
             cachedModels = List.of();
